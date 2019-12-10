@@ -29,7 +29,7 @@ export default class ShutdownTest {
 
     run(socket: SocketIO, projData: ProjectCreation, projectLang: string, runOnly?: boolean): void {
         (runOnly ? describe.only : describe)(this.testName, () => {
-            this.beforeAllHook(socket, projData);
+            this.beforeAllHook(socket, projData, projectLang);
             this.afterAllHook(socket);
 
             it(`shutdown turbine gracefully with ${projectLang} project`, async () => {
@@ -55,10 +55,10 @@ export default class ShutdownTest {
         });
     }
 
-    private beforeAllHook(socket: SocketIO, projData: ProjectCreation): void {
+    private beforeAllHook(socket: SocketIO, projData: ProjectCreation, projectLang: string): void {
         before(("create a project"), async () => {
             const createTest = new CreateTest("create test");
-            createTest.runCreateWithValidData(socket, projData);
+            createTest.runCreateWithValidData(socket, projData, projectLang);
         });
     }
 

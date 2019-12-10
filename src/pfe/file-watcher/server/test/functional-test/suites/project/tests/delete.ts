@@ -33,7 +33,7 @@ export default class DeleteTest {
                 this.runDeleteWithMissingProjectID();
                 this.runDeleteWithInvalidProjectID();
             }
-            this.runDeleteWithValidData(socket, projectID);
+            this.runDeleteWithValidData(socket, projectID, projectLang);
             this.afterAllHook(socket);
         });
     }
