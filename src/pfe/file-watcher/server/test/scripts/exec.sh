@@ -48,7 +48,7 @@ function downloadCwctl() {
     if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
         CWCTL_INSTALL_TARGET="$TURBINE_PERFORMANCE_TEST"
     else
-        CWCTL_INSTALL_TARGET="master"
+        CWCTL_INSTALL_TARGET="0.7.0" # just fall back to 0.7.0 for this case since we won't land this PR
     fi
     curl -X GET http://download.eclipse.org/codewind/codewind-installer/$CWCTL_INSTALL_TARGET/latest/cwctl-$extension --output $EXECUTABLE_NAME
     checkExitCode $? "Failed to download latest installer."
@@ -77,23 +77,23 @@ function setup {
     BUCKET_NAME=turbine-$TEST_TYPE-$TEST_SUITE
     TURBINE_SERVER_DIR=$CW_DIR/src/pfe/file-watcher/server
     TEST_DIR=$TURBINE_SERVER_DIR/test
-    TURBINE_DIR_CONTAINER=/file-watcher
+    TURBINE_DIR_CONTAINER=/file-watcher/server
     TEST_OUTPUT_DIR=~/test_results/$TEST_TYPE/$TEST_SUITE/$DATE_NOW/$TIME_NOW
     TEST_OUTPUT=$TEST_OUTPUT_DIR/test_output.xml
     PROJECTS_CLONE_DATA_FILE="$CW_DIR/src/pfe/file-watcher/server/test/resources/projects-clone-data"
     TEST_LOG=$TEST_OUTPUT_DIR/$TEST_TYPE-$TEST_SUITE-test.log
     TURBINE_NPM_INSTALL_CMD="cd /file-watcher/server; npm install --only=dev"
-    TURBINE_EXEC_TEST_CMD="cd /file-watcher/server; JUNIT_REPORT_PATH=/test_output.xml IMAGE_PUSH_REGISTRY_ADDRESS=${IMAGE_PUSH_REGISTRY_ADDRESS} IMAGE_PUSH_REGISTRY_NAMESPACE=${IMAGE_PUSH_REGISTRY_NAMESPACE} npm run $TEST_SUITE:test:xml"
+    TURBINE_EXEC_TEST_CMD="cd /file-watcher/server; JUNIT_REPORT_PATH=/test_output.xml IMAGE_PUSH_REGISTRY_ADDRESS=${IMAGE_PUSH_REGISTRY_ADDRESS} IMAGE_PUSH_REGISTRY_NAMESPACE=${IMAGE_PUSH_REGISTRY_NAMESPACE} TURBINE_PERFORMANCE_TEST=${TURBINE_PERFORMANCE_TEST} npm run $TEST_SUITE:test:xml"
 
     mkdir -p $TEST_OUTPUT_DIR
 
     if [ $TEST_TYPE == "local" ]; then
         CODEWIND_CONTAINER_ID=$(docker ps | grep codewind-pfe-amd64 | cut -d " " -f 1)
-        docker cp $TURBINE_SERVER_DIR $CODEWIND_CONTAINER_ID:$TURBINE_DIR_CONTAINER \
+        docker cp $TEST_DIR $CODEWIND_CONTAINER_ID:$TURBINE_DIR_CONTAINER \
         && docker exec -i $CODEWIND_CONTAINER_ID bash -c "$TURBINE_NPM_INSTALL_CMD"
     elif [ $TEST_TYPE == "kube" ]; then
         CODEWIND_POD_ID=$(kubectl get po --selector=app=codewind-pfe --show-labels | tail -n 1 | cut -d " " -f 1)
-        kubectl cp $TURBINE_SERVER_DIR $CODEWIND_POD_ID:$TURBINE_DIR_CONTAINER \
+        kubectl cp $TEST_DIR $CODEWIND_POD_ID:$TURBINE_DIR_CONTAINER \
         && kubectl exec -i $CODEWIND_POD_ID -- bash -c "$TURBINE_NPM_INSTALL_CMD"
     fi
 
@@ -169,6 +169,16 @@ function run {
     echo -e "${BLUE}>> Cleaning up test projects ... ${RESET}"
 	rm -rf $PROJECT_DIR
 	checkExitCode $? "Failed to clean up test directory."
+
+    if [ $TEST_TYPE == "local" ] & [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
+        echo -e "${BLUE}>> Copy back data.json file back to host VM ... ${RESET}"
+        docker cp $CODEWIND_CONTAINER_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+        checkExitCode $? "Failed to copy data.json file to host VM local."
+    elif [ $TEST_TYPE == "kube" ] & [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
+        echo -e "${BLUE}>> Copy back data.json file back to host VM ... ${RESET}"
+        kubectl cp $CODEWIND_POD_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+        checkExitCode $? "Failed to copy data.json file to host VM on kube."
+    fi
 }
 
 while getopts "t:s:d:h" OPTION; do

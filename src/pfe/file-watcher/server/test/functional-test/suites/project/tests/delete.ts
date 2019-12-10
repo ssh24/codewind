@@ -11,11 +11,15 @@
 import mocha from "mocha";
 import { expect } from "chai";
 import { deleteProject } from "../../../lib/project";
+import * as projectsController from "../../../../../src/controllers/projectsController";
 import { SocketIO } from "../../../lib/socket-io";
 import * as utils from "../../../lib/utils";
 import * as eventConfigs from "../../../configs/event.config";
 import * as timeoutConfigs from "../../../configs/timeout.config";
 import { fail } from "assert";
+
+import path from "path";
+import fs from "fs";
 
 export default class DeleteTest {
     testName: string;
@@ -24,11 +28,13 @@ export default class DeleteTest {
         this.testName = testName;
     }
 
-    run(socket: SocketIO, projectID: string, runOnly?: boolean): void {
+    run(socket: SocketIO, projData: projectsController.ICreateProjectParams, projectTemplate: string, projectLang: string, runOnly?: boolean): void {
         (runOnly ? describe.only : describe)(this.testName, () => {
-            this.runDeleteWithMissingProjectID();
-            this.runDeleteWithInvalidProjectID();
-            this.runDeleteWithValidData(socket, projectID);
+            if (!process.env.TURBINE_PERFORMANCE_TEST) {
+                this.runDeleteWithMissingProjectID();
+                this.runDeleteWithInvalidProjectID();
+            }
+            this.runDeleteWithValidData(socket, projData, projectTemplate, projectLang);
             this.afterAllHook(socket);
         });
     }
@@ -65,9 +71,17 @@ export default class DeleteTest {
         });
     }
 
-    private runDeleteWithValidData(socket: SocketIO, projectID: string): void {
+    private runDeleteWithValidData(socket: SocketIO, projData: projectsController.ICreateProjectParams, projectTemplate: string, projectLang: string): void {
         it("delete project", async () => {
-            const info: any = await deleteProject(projectID);
+            let dataFile, fileContent, chosenTimestamp, startTime;
+            if (process.env.TURBINE_PERFORMANCE_TEST) {
+                dataFile = path.resolve(__dirname, "..", "..", "..", "..", "performance-test", "data", process.env.TEST_TYPE, process.env.TURBINE_PERFORMANCE_TEST, "performance-data.json");
+                fileContent = JSON.parse(await fs.readFileSync(dataFile, "utf-8"));
+                chosenTimestamp = Object.keys(fileContent[projectLang]).sort().pop();
+                startTime = Date.now();
+            }
+
+            const info: any = await deleteProject(projData.projectID);
             const targetEvent = eventConfigs.events.deletion;
             expect(info).to.exist;
             expect(info.statusCode).to.exist;
@@ -82,11 +96,18 @@ export default class DeleteTest {
                 expect(event.eventData);
                 expect(event.eventData).to.haveOwnProperty("operationId");
                 expect(event.eventData).to.haveOwnProperty("projectID");
-                expect(event.eventData["projectID"]).to.equal(projectID);
+                expect(event.eventData["projectID"]).to.equal(projData.projectID);
                 expect(event.eventData).to.haveOwnProperty("status");
                 expect(event.eventData["status"]).to.equal("success");
             } else {
                 fail(`delete project test failed to listen for ${targetEvent}`);
+            }
+
+            if (process.env.TURBINE_PERFORMANCE_TEST) {
+                const endTime = Date.now();
+                const totalTestTime = (endTime - startTime) / 1000;
+                fileContent[projectLang][chosenTimestamp]["delete"] = totalTestTime;
+                await fs.writeFileSync(dataFile, JSON.stringify(fileContent));
             }
         }).timeout(timeoutConfigs.createTestTimeout);
     }
