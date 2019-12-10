@@ -20,6 +20,9 @@ import * as logConfigs from "../../../configs/log.config";
 import * as timeoutConfigs from "../../../configs/timeout.config";
 import { fail } from "assert";
 
+import path from "path";
+import fs from "fs";
+
 export default class CreateTest {
     testName: string;
 
@@ -27,11 +30,13 @@ export default class CreateTest {
         this.testName = testName;
     }
 
-    run(socket: SocketIO, projData: ProjectCreation, runOnly?: boolean): void {
+    run(socket: SocketIO, projData: ProjectCreation, projectLang: string, runOnly?: boolean): void {
         (runOnly ? describe.only : describe)(this.testName, () => {
-            this.runCreateWithoutProjectID(projData);
-            this.runCreateWithoutProjectType(projData);
-            this.runCreateWithValidData(socket, projData);
+            if (!process.env.TURBINE_PERFORMANCE_TEST) {
+                this.runCreateWithoutProjectID(projData);
+                this.runCreateWithoutProjectType(projData);
+            }
+            this.runCreateWithValidData(socket, projData, projectLang);
             this.afterAllHook(socket, projData);
         });
     }
@@ -74,8 +79,16 @@ export default class CreateTest {
         });
     }
 
-    runCreateWithValidData(socket: SocketIO, projData: ProjectCreation): void {
+    runCreateWithValidData(socket: SocketIO, projData: ProjectCreation, projectLang: string): void {
         it("create project", async () => {
+            let dataFile, fileContent, chosenTimestamp, startTime;
+            if (process.env.TURBINE_PERFORMANCE_TEST) {
+                dataFile = path.resolve(__dirname, "..", "..", "..", "..", "performance-test", "data", process.env.TEST_TYPE, process.env.TURBINE_PERFORMANCE_TEST, "performance-data.json");
+                fileContent = JSON.parse(await fs.readFileSync(dataFile, "utf-8"));
+                chosenTimestamp = Object.keys(fileContent[projectLang]).sort().pop();
+                startTime = Date.now();
+            }
+
             const info: any = await createProject(projData);
             expect(info).to.exist;
             expect(info.statusCode).to.exist;
@@ -86,6 +99,13 @@ export default class CreateTest {
 
             await waitForCreationEvent(projData.projectType);
             await waitForProjectStartedEvent();
+
+            if (process.env.TURBINE_PERFORMANCE_TEST) {
+                const endTime = Date.now();
+                const totalTestTime = (endTime - startTime) / 1000;
+                fileContent[projectLang][chosenTimestamp]["create"] = totalTestTime;
+                await fs.writeFileSync(dataFile, JSON.stringify(fileContent));
+            }
         }).timeout(timeoutConfigs.createTestTimeout);
 
         async function waitForCreationEvent(projectType: string): Promise<void> {

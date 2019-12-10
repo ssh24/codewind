@@ -78,9 +78,15 @@ function runAllTests(): void {
   for (const chosenType of projectTypes) {
     if (chosenType === "docker") {
       for (const chosenDocker of dockerProjects) {
+        if (process.env.TURBINE_PERFORMANCE_TEST) {
+          createDataFile(chosenType, chosenDocker);
+        }
         runProjectSpecificTest(chosenType, chosenDocker);
       }
     } else {
+      if (process.env.TURBINE_PERFORMANCE_TEST) {
+        createDataFile(chosenType);
+      }
       runProjectSpecificTest(chosenType);
     }
   }
@@ -94,4 +100,17 @@ function runProjectSpecificTest(projType: string, dockerType?: string): void {
     location: projectConfigs.appDirectory + projectType
   };
   projectSuite.runTest(projData, projectType);
+}
+
+function createDataFile(projType: string, dockerType?: string): void {
+  const dataJson = path.resolve(__dirname, "..", "performance-test", "data", process.env.TEST_TYPE, process.env.TURBINE_PERFORMANCE_TEST, "performance-data.json");
+  if (! fs.existsSync(dataJson)) {
+    fs.writeFileSync(dataJson, "{}", "utf-8");
+  }
+  const fileContent = JSON.parse(fs.readFileSync(dataJson, "utf-8"));
+  const projectType = dockerType ? dockerType : projType;
+  fileContent[projectType] = fileContent[projectType] || {};
+  const timestamp = Date.now();
+  fileContent[projectType][timestamp] = {};
+  fs.writeFileSync(dataJson, JSON.stringify(fileContent));
 }

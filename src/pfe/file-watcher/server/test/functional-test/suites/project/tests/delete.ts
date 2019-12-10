@@ -17,6 +17,9 @@ import * as eventConfigs from "../../../configs/event.config";
 import * as timeoutConfigs from "../../../configs/timeout.config";
 import { fail } from "assert";
 
+import path from "path";
+import fs from "fs";
+
 export default class DeleteTest {
     testName: string;
 
@@ -24,10 +27,12 @@ export default class DeleteTest {
         this.testName = testName;
     }
 
-    run(socket: SocketIO, projectID: string, runOnly?: boolean): void {
+    run(socket: SocketIO, projectID: string, projectLang: string, runOnly?: boolean): void {
         (runOnly ? describe.only : describe)(this.testName, () => {
-            this.runDeleteWithMissingProjectID();
-            this.runDeleteWithInvalidProjectID();
+            if (!process.env.TURBINE_PERFORMANCE_TEST) {
+                this.runDeleteWithMissingProjectID();
+                this.runDeleteWithInvalidProjectID();
+            }
             this.runDeleteWithValidData(socket, projectID);
             this.afterAllHook(socket);
         });
@@ -65,8 +70,16 @@ export default class DeleteTest {
         });
     }
 
-    private runDeleteWithValidData(socket: SocketIO, projectID: string): void {
+    private runDeleteWithValidData(socket: SocketIO, projectID: string, projectLang: string): void {
         it("delete project", async () => {
+            let dataFile, fileContent, chosenTimestamp, startTime;
+            if (process.env.TURBINE_PERFORMANCE_TEST) {
+                dataFile = path.resolve(__dirname, "..", "..", "..", "..", "performance-test", "data", process.env.TEST_TYPE, process.env.TURBINE_PERFORMANCE_TEST, "performance-data.json");
+                fileContent = JSON.parse(await fs.readFileSync(dataFile, "utf-8"));
+                chosenTimestamp = Object.keys(fileContent[projectLang]).sort().pop();
+                startTime = Date.now();
+            }
+
             const info: any = await deleteProject(projectID);
             const targetEvent = eventConfigs.events.deletion;
             expect(info).to.exist;
@@ -87,6 +100,13 @@ export default class DeleteTest {
                 expect(event.eventData["status"]).to.equal("success");
             } else {
                 fail(`delete project test failed to listen for ${targetEvent}`);
+            }
+
+            if (process.env.TURBINE_PERFORMANCE_TEST) {
+                const endTime = Date.now();
+                const totalTestTime = (endTime - startTime) / 1000;
+                fileContent[projectLang][chosenTimestamp]["delete"] = totalTestTime;
+                await fs.writeFileSync(dataFile, JSON.stringify(fileContent));
             }
         }).timeout(timeoutConfigs.createTestTimeout);
     }

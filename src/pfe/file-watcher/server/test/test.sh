@@ -44,7 +44,6 @@ function run {
     # Need to run 'run.sh' in Codewind home directory because 'run.sh' uses relative path to run other building scripts
     if [ $TEST_TYPE == "local" ]; then
         cd $CW_DIR
-        ./run.sh
         cd -
     elif [ $TEST_TYPE == "kube" ]; then
         HTTPSTATUS=$(curl -si --header 'Authorization: Bearer '"$CHE_ACCESS_TOKEN"'' http://che-$NAMESPACE.$CLUSTER_IP.nip.io/api/workspace/ | head -n 1 | cut -d ' ' -f2)
