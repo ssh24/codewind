@@ -144,13 +144,25 @@ function setup {
 function run {
     if [ $TEST_TYPE == "local" ]; then
         if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
-            docker exec -i $CODEWIND_CONTAINER_ID bash -c "$PERFORMANCE_TEST_DIR"
+            echo -e "${BLUE}>> Copying data.json file back to docker container ... ${RESET}"
+            if [[ -f $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json ]]; then
+                docker cp $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CODEWIND_CONTAINER_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+            else
+                docker exec -i $CODEWIND_CONTAINER_ID bash -c "$PERFORMANCE_TEST_DIR"
+            fi
+            checkExitCode $? "Failed to copy data.json file to docker container."
         fi
         docker exec -i $CODEWIND_CONTAINER_ID bash -c "$TURBINE_EXEC_TEST_CMD" | tee $TEST_LOG
         docker cp $CODEWIND_CONTAINER_ID:/test_output.xml $TEST_OUTPUT
     elif [ $TEST_TYPE == "kube" ]; then
         if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
-            kubectl exec -i $CODEWIND_POD_ID -- bash -c "$PERFORMANCE_TEST_DIR"
+            echo -e "${BLUE}>> Copying data.json file back to kube pod ... ${RESET}"
+            if [[ -f $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json ]]; then
+                kubectl cp $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CODEWIND_POD_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+            else
+                kubectl exec -i $CODEWIND_POD_ID -- bash -c "$PERFORMANCE_TEST_DIR"
+            fi
+            checkExitCode $? "Failed to copy data.json file to kube pod."
         fi
         kubectl exec -i $CODEWIND_POD_ID -- bash -c "$TURBINE_EXEC_TEST_CMD" | tee $TEST_LOG
         kubectl cp $CODEWIND_POD_ID:/test_output.xml $TEST_OUTPUT
