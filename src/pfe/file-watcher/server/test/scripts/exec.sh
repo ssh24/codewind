@@ -79,6 +79,7 @@ function setup {
     TEST_LOG=$TEST_OUTPUT_DIR/$TEST_TYPE-$TEST_SUITE-test.log
     TURBINE_NPM_INSTALL_CMD="cd /file-watcher/server; npm install --only=dev"
     TURBINE_EXEC_TEST_CMD="cd /file-watcher/server; JUNIT_REPORT_PATH=/test_output.xml TURBINE_PERFORMANCE_TEST=${TURBINE_PERFORMANCE_TEST} npm run $TEST_SUITE:test:xml"
+    PERFORMANCE_TEST_DIR="mkdir -p /file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST"
 
     mkdir -p $TEST_OUTPUT_DIR
 
@@ -142,9 +143,15 @@ function setup {
 
 function run {
     if [ $TEST_TYPE == "local" ]; then
+        if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
+            docker exec -i $CODEWIND_CONTAINER_ID bash -c "$PERFORMANCE_TEST_DIR"
+        fi
         docker exec -i $CODEWIND_CONTAINER_ID bash -c "$TURBINE_EXEC_TEST_CMD" | tee $TEST_LOG
         docker cp $CODEWIND_CONTAINER_ID:/test_output.xml $TEST_OUTPUT
     elif [ $TEST_TYPE == "kube" ]; then
+        if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
+            kubectl exec -i $CODEWIND_POD_ID -- bash -c "$PERFORMANCE_TEST_DIR"
+        fi
         kubectl exec -i $CODEWIND_POD_ID -- bash -c "$TURBINE_EXEC_TEST_CMD" | tee $TEST_LOG
         kubectl cp $CODEWIND_POD_ID:/test_output.xml $TEST_OUTPUT
     fi
