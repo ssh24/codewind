@@ -144,26 +144,33 @@ function setup {
 function run {
     if [ $TEST_TYPE == "local" ]; then
         if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
-            echo -e "${BLUE}>> Copying data.json file back to docker container ... ${RESET}"
-            if [[ -f $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json ]]; then
-                docker cp $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CODEWIND_CONTAINER_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
-            else
-                docker exec -i $CODEWIND_CONTAINER_ID bash -c "$PERFORMANCE_TEST_DIR"
+            echo -e "${BLUE}>> Creating data directory in PFE docker if it does not exist already ... ${RESET}"
+            docker exec -i $CODEWIND_CONTAINER_ID bash -c "$PERFORMANCE_TEST_DIR"
+            checkExitCode $? "Failed to create data directory in PFE docker."
+
+            if [[ -f "$PERFORMANCE_DATA_DIR"/performance-data.json ]]; then
+                echo -e "${BLUE}>> Copying data.json file back to docker container ... ${RESET}"
+                docker cp "$PERFORMANCE_DATA_DIR"/performance-data.json $CODEWIND_CONTAINER_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+                checkExitCode $? "Failed to copy data.json file to docker container."
             fi
-            checkExitCode $? "Failed to copy data.json file to docker container."
         fi
+
         docker exec -i $CODEWIND_CONTAINER_ID bash -c "$TURBINE_EXEC_TEST_CMD" | tee $TEST_LOG
         docker cp $CODEWIND_CONTAINER_ID:/test_output.xml $TEST_OUTPUT
+    
     elif [ $TEST_TYPE == "kube" ]; then
         if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
-            echo -e "${BLUE}>> Copying data.json file back to kube pod ... ${RESET}"
-            if [[ -f $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json ]]; then
-                kubectl cp $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CODEWIND_POD_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
-            else
-                kubectl exec -i $CODEWIND_POD_ID -- bash -c "$PERFORMANCE_TEST_DIR"
+            echo -e "${BLUE}>> Creating data directory in PFE kube if it does not exist already ... ${RESET}"
+            kubectl exec -i $CODEWIND_POD_ID -- bash -c "$PERFORMANCE_TEST_DIR"
+            checkExitCode $? "Failed to create data directory in PFE kube."
+
+            if [[ -f "$PERFORMANCE_DATA_DIR"/performance-data.json ]]; then
+                echo -e "${BLUE}>> Copying data.json file back to docker container ... ${RESET}"
+                kubectl cp "$PERFORMANCE_DATA_DIR"/performance-data.json $CODEWIND_POD_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+                checkExitCode $? "Failed to copy data.json file to docker container."
             fi
-            checkExitCode $? "Failed to copy data.json file to kube pod."
         fi
+
         kubectl exec -i $CODEWIND_POD_ID -- bash -c "$TURBINE_EXEC_TEST_CMD" | tee $TEST_LOG
         kubectl cp $CODEWIND_POD_ID:/test_output.xml $TEST_OUTPUT
     fi
@@ -186,11 +193,11 @@ function run {
 
     if [ $TEST_TYPE == "local" ] & [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
         echo -e "${BLUE}>> Copy back data.json file back to host VM ... ${RESET}"
-        docker cp $CODEWIND_CONTAINER_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+        docker cp $CODEWIND_CONTAINER_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json "$PERFORMANCE_DATA_DIR"
         checkExitCode $? "Failed to copy data.json file to host VM local."
     elif [ $TEST_TYPE == "kube" ] & [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
         echo -e "${BLUE}>> Copy back data.json file back to host VM ... ${RESET}"
-        kubectl cp $CODEWIND_POD_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json $CW_DIR/src/pfe/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST
+        kubectl cp $CODEWIND_POD_ID:/file-watcher/server/test/performance-test/data/$TEST_TYPE/$TURBINE_PERFORMANCE_TEST/performance-data.json "$PERFORMANCE_DATA_DIR"
         checkExitCode $? "Failed to copy data.json file to host VM on kube."
     fi
 }
