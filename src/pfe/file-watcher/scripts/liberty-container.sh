@@ -93,17 +93,19 @@ function create() {
 				echo "Cache will be used for liberty project $ROOT"
 				CACHE_CONTAINER_ID=$(docker create ibmcom/codewind-java-project-cache)
 
-				if [ ! -f libertyrepocache.zip ]; then
-					echo "Downloading liberty feature cache to $ROOT"
-					docker cp $CACHE_CONTAINER_ID:/cache/libertyrepocache.zip .
-					echo "Finished downloading liberty feature cache to $ROOT"
-				fi
+				echo -e "Commented out both libertyrepocache.zip and localm2cache.zip"
 
-				if [ ! -f localm2cache.zip ]; then
-					echo "Downloading maven m2 cache to $ROOT"
-					docker cp $CACHE_CONTAINER_ID:/cache/localm2cache.zip .
-					echo "Finished downloading maven m2 cache to $ROOT"
-				fi
+				# if [ ! -f libertyrepocache.zip ]; then
+				# 	echo "Downloading liberty feature cache to $ROOT"
+				# 	docker cp $CACHE_CONTAINER_ID:/cache/libertyrepocache.zip .
+				# 	echo "Finished downloading liberty feature cache to $ROOT"
+				# fi
+
+				# if [ ! -f localm2cache.zip ]; then
+				# 	echo "Downloading maven m2 cache to $ROOT"
+				# 	docker cp $CACHE_CONTAINER_ID:/cache/localm2cache.zip .
+				# 	echo "Finished downloading maven m2 cache to $ROOT"
+				# fi
 		
 				docker rm -f $CACHE_CONTAINER_ID
 			else
