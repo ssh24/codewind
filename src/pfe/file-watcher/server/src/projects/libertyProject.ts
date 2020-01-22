@@ -325,7 +325,7 @@ export function getDefaultDebugPort(): string {
  * @returns number
  */
 export function getDefaultPingTimeout(): number {
-    return 30;
+    return 90;
 }
 
 /**
