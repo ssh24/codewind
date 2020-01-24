@@ -52,6 +52,10 @@
     "xss": "^1.0.3"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^2.5.0",
+    "@stryker-mutator/mocha-framework": "^2.5.0",
+    "@stryker-mutator/mocha-runner": "^2.5.0",
+    "@stryker-mutator/typescript": "^2.5.0",
     "@types/async-lock": "^1.1.1",
     "@types/chai": "^4.1.7",
     "@types/dockerode": "^2.5.5",
