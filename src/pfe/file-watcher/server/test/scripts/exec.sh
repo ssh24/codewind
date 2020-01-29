@@ -46,7 +46,7 @@ function downloadCwctl() {
     fi
     echo "Extension is $extension"
     if [ ! -z $TURBINE_PERFORMANCE_TEST ]; then
-        CWCTL_INSTALL_TARGET="$TURBINE_PERFORMANCE_TEST"
+        CWCTL_INSTALL_TARGET="0.7.0"
     else
         CWCTL_INSTALL_TARGET="0.7.0" # just fall back to 0.7.0 for this case since we won't land this PR
     fi
