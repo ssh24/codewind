@@ -2,13 +2,15 @@ module.exports = function(config) {
   config.set({
     mutator: "typescript",
     packageManager: "npm",
-    reporters: ["clear-text", "progress", "dashboard"],
+    reporters: ["clear-text", "dashboard"],
+    dashboard: { project: 'github.com/ssh24/codewind', version: 'stryker-mutation', module: 'my-module', baseUrl: 'https://dashboard.stryker-mutator.io/api/reports', reportType: 'full' },
     testRunner: "mocha",
-    transpilers: ["typescript"],
     testFramework: "mocha",
     coverageAnalysis: "perTest",
     tsconfigFile: "tsconfig.json",
-    mutate: ["src/**/*.ts"],
+    transpilers: ["typescript"],
+    files: ["src/**/*.ts"],
+    mutate: ["src/controllers/projectEventsController.ts"],
     fileLogLevel: 'trace',
     mochaOptions: {
       opts: "test/mocha.opts",
